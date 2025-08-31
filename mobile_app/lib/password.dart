@@ -3,6 +3,8 @@ import 'package:mobile_app/home.dart';
 import 'package:mobile_app/main.dart';
 import 'package:flutter/src/material/colors.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class Password extends StatelessWidget {
   const Password({Key? key}) : super(key: key);
@@ -32,6 +34,9 @@ class MyStatefulWidget extends StatefulWidget {
   @override
   State<MyStatefulWidget> createState() => _MyStatefulWidgetState();
 }
+
+  final _auth = FirebaseAuth.instance;
+  final user = _auth.currentUser;
 
 class _MyStatefulWidgetState extends State<MyStatefulWidget> {
   TextEditingController emailController = TextEditingController();
@@ -104,7 +109,21 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
                     padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
                     child: ElevatedButton(
                       child: const Text('Submit'),
-                      onPressed: () {
+                      onPressed: () async {
+                        try{
+                        await user?.updatePassword(
+                          passwordController.text.trim()
+                        );
+                        } catch (e) {
+                           Fluttertoast.showToast(
+                            msg:
+                                "Enter a valid password and try again",
+                            toastLength: Toast.LENGTH_SHORT,
+                            gravity: ToastGravity
+                                .BOTTOM, // Also possible "TOP" and "CENTER"
+                          );
+                          print(e);
+                        }
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const Home()),
