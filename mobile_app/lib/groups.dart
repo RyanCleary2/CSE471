@@ -8,6 +8,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:mobile_app/home.dart';
 import 'package:mobile_app/main.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Groups extends StatelessWidget {
   const Groups({super.key});
@@ -37,28 +39,35 @@ class _MyHomePageState extends State<MyHomePage> {
   TextEditingController cmntController = TextEditingController();
   TextEditingController descController = TextEditingController();
   //group examples
-  var _groupList = [
-    [
-      "First group :)", 
-      "Public", 
-      "leh3003@wellcoach.org",
-      "my first group, seeing how it works"
-    ],
-    [
-      "Bookstores!!",
-      "Public",
-      "mat202@wellcoach.org",
-      "A group for all who love bookstores!!"
-    ],
-    [
-      "Libraries enjoyers",
-      "Public",
-      "lem111@wellcoach.org",
-      "I like books. Do you?"
-    ]
-  ];
-  var _groupEntry = [false, false, false];
+  var _groupList = [];
+  var _groupEntry = [];
   var _pubpriv = false;
+  
+  final _auth = FirebaseAuth.instance;
+  
+
+  //Made a seperate function to fetch groups so it can refresh after creating a new group
+  //Allows for easier re-fetching of groups after creating a new one
+  void fetchGroups() {
+  FirebaseFirestore.instance.collection('groups').get().then((querySnapshot) {
+    setState(() {
+      _groupList = querySnapshot.docs.map((doc) => [
+        doc.id,
+        doc['visibility'],
+        doc['creator'],
+        doc['description'],
+        doc['members'] ?? [], 
+      ]).toList();
+      _groupEntry = List.filled(_groupList.length, false);
+    });
+  });
+}
+  //Whenever the page is loaded fetch the groups from firestore
+  @override
+  void initState() {
+    super.initState();
+    fetchGroups();
+  }
 
   Widget _buildPopupDialog(BuildContext context) {
     return AlertDialog(
@@ -84,17 +93,45 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
           SizedBox(height: 5),
+          //Dropdown for public/private option
+          Row(
+            children: <Widget>[
+              Text("Visibility:"),
+              SizedBox(width: 10),
+              DropdownButton<String>(
+                value: _pubpriv ? 'Public' : 'Private',
+                items: <String>['Public', 'Private']
+                    .map<DropdownMenuItem<String>>((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _pubpriv = newValue == 'Public';
+                  });
+                },
+              ),
+            ],
+          ),
         ],
       ),
       actions: <Widget>[
         ElevatedButton(
           onPressed: () {
-          // add the newly created group to the group list dropdown option (public private) auth!.email
-          // your codes begin here
-
-
-
-          // end
+            String visibility = _pubpriv ? "Public" : "Private";
+            FirebaseFirestore.instance.collection('groups').doc(cmntController.text).set({
+              'visibility': visibility,
+              'creator': _auth.currentUser!.email!,
+              'description': descController.text,
+              'members': [_auth.currentUser!.email!]
+            }).then((_) {
+              fetchGroups();
+              Navigator.of(context).pop();
+              cmntController.clear();
+              descController.clear();
+            });
           },
           style:
               ElevatedButton.styleFrom(backgroundColor: Colors.indigo.shade300),
@@ -102,6 +139,7 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         ElevatedButton(
           onPressed: () {
+            fetchGroups(); // Refresh the group list to include the new group
             cmntController.clear();
             descController.clear();
             Navigator.of(context).pop();
@@ -130,7 +168,15 @@ class _MyHomePageState extends State<MyHomePage> {
           onPressed: () {
             // show corresponding group description after click
             // your codes begin here
-
+            // Add user to the group's members array in Firestore
+            FirebaseFirestore.instance.collection('groups').doc(_groupList[index][0])
+            .update({
+              'members': FieldValue.arrayUnion([_auth.currentUser!.email!])
+            });
+            setState(() {
+              _groupEntry[index] = true;
+            });
+            Navigator.of(context).pop();
 
             // end
           },
@@ -141,7 +187,11 @@ class _MyHomePageState extends State<MyHomePage> {
         ElevatedButton(
           onPressed: () {
             // your codes begin here
-
+            // close the dialog and do not join the group
+            Navigator.of(context).pop();
+            setState(() {
+              _groupEntry[index] = false;
+            });
 
             // end
           },
@@ -153,6 +203,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -264,6 +315,8 @@ class _MyHomePageState extends State<MyHomePage> {
                           shrinkWrap: true,
                           itemCount: _groupList.length,
                           itemBuilder: (BuildContext context, int index) {
+                            final members = _groupList[index][4] as List;
+                            final isMember = members.contains(_auth.currentUser!.email!);
                             return Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceAround,
@@ -304,55 +357,34 @@ class _MyHomePageState extends State<MyHomePage> {
                                                 )),
                                             Container(
                                               width: 95,
-                                              child: _groupEntry[index] == false
-                                                  ? _groupList[index][1] ==
-                                                          "Public"
-                                                      ? ElevatedButton(
-                                                          style: ElevatedButton
-                                                              .styleFrom(
-                                                                  backgroundColor:
-                                                                      Colors
-                                                                          .indigo
-                                                                          .shade300),
-                                                          child: Text(
-                                                              'Join Group',
-                                                              style: TextStyle(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w500,
-                                                                  fontSize:
-                                                                      12)),
-                                                          onPressed: () {
-                                                            showDialog(
-                                                              context: context,
-                                                              builder: (BuildContext
-                                                                      context) =>
-                                                                  _buildGroupDialog(
-                                                                      context,
-                                                                      index),
-                                                            );
-                                                          },
-                                                        )
-                                                      : ElevatedButton(
-                                                          style: ElevatedButton
-                                                              .styleFrom(
-                                                                  backgroundColor:
-                                                                      Colors
-                                                                          .indigo
-                                                                          .shade300),
-                                                          child:
-                                                              Icon(Icons.check),
-                                                          onPressed: () => {},
-                                                        )
-                                                  : ElevatedButton(
-                                                      style: ElevatedButton
-                                                          .styleFrom(
-                                                              backgroundColor:
-                                                                  Colors.indigo
-                                                                      .shade300),
-                                                      child: Icon(Icons.check),
-                                                      onPressed: () => {},
-                                                    ),
+                                              child: (() {
+                                                if (isMember) {
+                                                  return Icon(Icons.check);
+                                                } else if (_groupList[index][1] == "Public") {
+                                                  return ElevatedButton(
+                                                    style: ElevatedButton.styleFrom(
+                                                        backgroundColor: Colors.indigo.shade300),
+                                                    child: Text('Join Group',
+                                                        style: TextStyle(
+                                                            fontWeight: FontWeight.w500,
+                                                            fontSize: 12)),
+                                                    onPressed: () {
+                                                      showDialog(
+                                                        context: context,
+                                                        builder: (BuildContext context) =>
+                                                            _buildGroupDialog(context, index),
+                                                      );
+                                                    },
+                                                  );
+                                                } else {
+                                                  return ElevatedButton(
+                                                    style: ElevatedButton.styleFrom(
+                                                        backgroundColor: Colors.indigo.shade300),
+                                                    child: Icon(Icons.check),
+                                                    onPressed: () => {},
+                                                  );
+                                                }
+                                              })(),
                                             )
                                           ])),
                                 ]);

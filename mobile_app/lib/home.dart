@@ -432,29 +432,49 @@ class _MyHomePageState extends State<MyHomePage> {
             //returns a msg "Please refrain from using profanity"(if profanity is present)
             // hint: use hasProfanity() plugin, then change true to profanity check
             // your codes begin here
-            if (true){
+            if (filter.hasProfanity(cmntController.text)) {
+              Fluttertoast.showToast(
+                msg: "Please refrain from using profanity",
+                toastLength: Toast.LENGTH_SHORT,
+                gravity: ToastGravity.CENTER, // Also possible "TOP" and "BOTTOM"
+              );
+            }
   
             // end
             //SUICIDAL MESSAGES FILTER HERE
-            }
             else {
               // add code to set feelValue to g b n, 'Positive'='g', 'Negative'='b', 'Neutral'='n'
               if (selectedTone != null) {
                 String feelValue;
                 // your codes begin here
-
-
+                if (selectedTone == 'Positive') {
+                  feelValue = 'g';
+                } else if (selectedTone == 'Negative') {
+                  feelValue = 'b';
+                } else {
+                  feelValue = 'n';
+                }
                 // end
                 // Generating a random delay between 8 and 24 hours
-                int delayInHours = Random().nextInt(17) +
-                    8; // Generates a number between 0 and 16, then adds 8
+                //int delayInHours = Random().nextInt(17) + 8; // Generates a number between 0 and 16, then adds 8
+                int delayInHours = 0; // For testing purposes, set to 0
                 DateTime postTime = DateTime.now();
                 DateTime visibleTime =
                     postTime.add(Duration(hours: delayInHours));
                 // use FirebaseFirestore.instance to store the comment entry (data, user, feelvalue, posttime, visibletime)
                 // your codes begin here
 
-
+                FirebaseFirestore.instance
+                    .collection('comments')
+                    .doc(locValue)
+                    .collection("comments")
+                    .add({
+                  'data': cmntController.text,
+                  'user': auth?.email ?? 'Anonymous',
+                  'feel': feelValue,
+                  'postTime': postTime,
+                  'visibleTime': visibleTime,
+                });
                 // end
                 setState(() {
                   selectedTone = null;

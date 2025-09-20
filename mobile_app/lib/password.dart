@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_app/home.dart';
 import 'package:mobile_app/main.dart';
-import 'package:flutter/src/material/colors.dart';
 import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -110,6 +109,9 @@ class _MyStatefulWidgetState extends State<MyStatefulWidget> {
                     child: ElevatedButton(
                       child: const Text('Submit'),
                       onPressed: () async {
+                        //COMPLETE : Update Password Code 
+                        // null-aware call to firebase update operation
+                        // used toast format from the adding user base code
                         try{
                         await user?.updatePassword(
                           passwordController.text.trim()
